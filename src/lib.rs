@@ -35,7 +35,7 @@ impl LxdServer {
         Client::with_connector(connector)
     }
 
-    pub fn get(&self, relative_url: &str) -> Response {
+    fn get(&self, relative_url: &str) -> Response {
         let client = self.get_client();
         let url = match (self.url.clone() + relative_url).into_url() {
             Err(why) => panic!("{:?}", why),
@@ -46,6 +46,13 @@ impl LxdServer {
             Err(why) => panic!("{:?}", why),
             Ok(response) => response,
         }
+    }
+
+    pub fn list_containers(&self) ->  Vec<Container> {
+        let mut response = self.get("/1.0/containers?recursion=1");
+        let payload = response_to_value(&mut response);
+        let container_values = payload.find("metadata").unwrap().as_array().unwrap();
+        container_values.iter().map(|v| { Container::from_json(v) }).collect()
     }
 }
 
@@ -126,16 +133,4 @@ fn response_to_value(response: &mut Response) -> Value {
     let mut body = String::new();
     response.read_to_string(&mut body).unwrap();
     serde_json::from_str(body.as_str()).unwrap()
-}
-
-pub fn list_containers() ->  Vec<Container> {
-    let server = LxdServer::new(
-        "https://104.155.75.254:8443",
-        "/home/daniel/.config/lxc/client.crt",
-        "/home/daniel/.config/lxc/client.key"
-    );
-    let mut response = server.get("/1.0/containers?recursion=1");
-    let payload = response_to_value(&mut response);
-    let container_values = payload.find("metadata").unwrap().as_array().unwrap();
-    container_values.iter().map(|v| { Container::from_json(v) }).collect()
 }

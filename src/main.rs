@@ -1,7 +1,6 @@
 extern crate lxd;
 
-use lxd::Container;
-use lxd::list_containers;
+use lxd::{Container,LxdServer};
 
 fn create_dividing_line(widths: &Vec<usize>) -> String {
     let mut dividing_line = String::new();
@@ -77,7 +76,12 @@ fn prepare_container_line(c: &Container) -> Vec<String> {
 }
 
 fn main() {
+    let server = LxdServer::new(
+        "https://104.155.75.254:8443",
+        "/home/daniel/.config/lxc/client.crt",
+        "/home/daniel/.config/lxc/client.key"
+    );
     let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
-    let container_items = list_containers().iter().map(prepare_container_line).collect();
+    let container_items = server.list_containers().iter().map(prepare_container_line).collect();
     print!("{}", format_output(&headers, &container_items));
 }
