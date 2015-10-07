@@ -2,7 +2,7 @@ extern crate lxd;
 
 use lxd::list_containers;
 
-fn format_output(headers: &Vec<String>, items: &Vec<Vec<String>>) -> String{
+fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String{
     let mut widths = Vec::new();
     for header in headers {
         widths.push(header.len());
@@ -44,7 +44,7 @@ fn format_output(headers: &Vec<String>, items: &Vec<Vec<String>>) -> String{
 
 fn main() {
     let containers = list_containers();
-    let headers = vec!["NAME".to_string(), "STATE".to_string(), "IPV4".to_string(), "IPV6".to_string(), "EPHEMERAL".to_string(), "SNAPSHOTS".to_string()];
+    let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
     let container_items = containers.iter().map(
         |c| {
             let mut ipv4_address = String::new();
