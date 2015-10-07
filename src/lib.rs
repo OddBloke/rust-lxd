@@ -74,16 +74,41 @@ pub struct Container {
 impl Container {
 
     pub fn from_json(json: &Value) -> Container {
-        let get_string_value = |path: &[&str]| {
-            json.find_path(&path).unwrap().as_string().unwrap().to_string()
+        let value_for_path = |path: &[&str]| {
+            match json.find_path(&path) {
+                Some(value) => { value }
+                None => panic!("Couldn't find {} in JSON", path.join("."))
+            }
+        };
+        let get_array_from_json = |path: &[&str]| {
+            match value_for_path(&path).as_array() {
+                Some(array) => { array }
+                None => panic!("Couldn't find array at {}", path.join("."))
+            }
+        };
+        let get_boolean_from_json = |path: &[&str]| {
+            match value_for_path(&path).as_boolean() {
+                Some(boolean) => { boolean }
+                None => panic!("Couldn't find boolean at {}", path.join("."))
+            }
+        };
+        let get_string_from_json = |path: &[&str]| {
+            match value_for_path(&path).as_string() {
+                Some(string) => { string.to_string() }
+                None => panic!("Couldn't find string at {}", path.join("."))
+            }
         };
         Container {
-            ephemeral: json.find_path(&["state", "ephemeral"]).unwrap().as_boolean().unwrap(),
-            name: get_string_value(&["state", "name"]),
+            ephemeral: get_boolean_from_json(&["state", "ephemeral"]),
+            name: get_string_from_json(&["state", "name"]),
             status: ContainerStatus {
-                status: get_string_value(&["state", "status", "status"]),
-                ips: json.find_path(&["state", "status", "ips"]).unwrap().as_array().unwrap().iter().map(
-                    |ip_value| { let ip: ContainerIP = serde_json::from_value(ip_value.clone()).unwrap(); ip }).collect(),
+                status: get_string_from_json(&["state", "status", "status"]),
+                ips: get_array_from_json(&["state", "status", "ips"]).iter().map(
+                    |ip_value| -> ContainerIP {
+                        match serde_json::from_value(ip_value.clone()) {
+                            Ok(container_ip) => container_ip,
+                            Err(_) => panic!("Couldn't parse a ContainerIP for {:?}", ip_value)
+                        }}).collect(),
             },
             snapshot_urls: match json.find_path(&["snaps"]).unwrap().as_array() {
                 Some(array) => {
