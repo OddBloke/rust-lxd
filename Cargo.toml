@@ -1,4 +1,9 @@
 [package]
 name = "lxd"
 version = "0.1.0"
-authors = ["Daniel Watkins <daniel.watkins@canonical.com>"]
+authors = ["Daniel Watkins <daniel@daniel-watkins.co.uk>"]
+
+[dependencies]
+hyper = "0.6"
+rustc-serialize = "0.3"
+url = "0.2"
