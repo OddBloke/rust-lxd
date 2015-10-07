@@ -1,5 +1,6 @@
 extern crate lxd;
 
+use lxd::Container;
 use lxd::list_containers;
 
 fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String{
@@ -42,23 +43,23 @@ fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String{
     output_string
 }
 
+fn prepare_container_line(c: &Container) -> Vec<String> {
+    let mut ipv4_address = String::new();
+    let mut ipv6_address = String::new();
+    for ip in &c.status.ips {
+        if ip.protocol == "IPV4" && ip.address != "127.0.0.1" {
+            ipv4_address = ip.address.clone();
+        }
+        if ip.protocol == "IPV6" && ip.address != "::1" {
+            ipv6_address = ip.address.clone();
+        }
+    }
+    let ephemeral = if c.ephemeral { "YES" } else { "NO" };
+    vec![c.name.clone(), c.status.status.clone().to_uppercase(), ipv4_address.to_string(), ipv6_address.to_string(), ephemeral.to_string(), c.snapshot_urls.len().to_string()]
+}
+
 fn main() {
-    let containers = list_containers();
     let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
-    let container_items = containers.iter().map(
-        |c| {
-            let mut ipv4_address = String::new();
-            let mut ipv6_address = String::new();
-            for ip in &c.status.ips {
-                if ip.protocol == "IPV4" && ip.address != "127.0.0.1" {
-                    ipv4_address = ip.address.clone();
-                }
-                if ip.protocol == "IPV6" && ip.address != "::1" {
-                    ipv6_address = ip.address.clone();
-                }
-            }
-            let ephemeral = if c.ephemeral { "YES" } else { "NO" };
-            vec![c.name.clone(), c.status.status.clone().to_uppercase(), ipv4_address.to_string(), ipv6_address.to_string(), ephemeral.to_string(), c.snapshot_urls.len().to_string()]
-        }).collect();
+    let container_items = list_containers().iter().map(prepare_container_line).collect();
     println!("{}", format_output(&headers, &container_items));
 }
