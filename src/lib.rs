@@ -1,4 +1,4 @@
-#![feature(convert,custom_derive, plugin)]
+#![feature(convert,custom_derive,plugin)]
 #![plugin(serde_macros)]
 extern crate hyper;
 extern crate serde;
@@ -49,24 +49,50 @@ impl LxdServer {
     }
 }
 
+#[derive(Deserialize)]
+pub struct ContainerIP {
+    pub address: String,
+    pub host_veth: String,
+    pub interface: String,
+    pub protocol: String,
+}
+
+pub struct ContainerStatus {
+    pub status: String,
+    pub ips: Vec<ContainerIP>,
+}
+
 pub struct Container {
     pub name: String,
-    pub status: String,
+    pub status: ContainerStatus,
+    pub ephemeral: bool,
+    pub snapshot_urls: Vec<String>,
 //    pub ipv4: String,
 //    pub ipv6: String,
-//    pub ephemeral: bool,
-//    pub snapshots: u8,
 }
 
 impl Container {
 
-    pub fn from_json(json: Value) -> Container {
+    pub fn from_json(json: &Value) -> Container {
         let get_string_value = |path: &[&str]| {
             json.find_path(&path).unwrap().as_string().unwrap().to_string()
         };
         Container {
-            name: get_string_value(&["metadata", "name"]),
-            status: get_string_value(&["metadata", "status", "status"]),
+            ephemeral: json.find_path(&["state", "ephemeral"]).unwrap().as_boolean().unwrap(),
+            name: get_string_value(&["state", "name"]),
+            status: ContainerStatus {
+                status: get_string_value(&["state", "status", "status"]),
+                ips: json.find_path(&["state", "status", "ips"]).unwrap().as_array().unwrap().iter().map(
+                    |ip_value| { let ip: ContainerIP = serde_json::from_value(ip_value.clone()).unwrap(); ip }).collect(),
+            },
+            snapshot_urls: match json.find_path(&["snaps"]).unwrap().as_array() {
+                Some(array) => {
+                    array.iter().map(|x| {x.as_string().unwrap().to_string()}).collect()
+                }
+                None => {
+                    vec![]
+                }
+            }
         }
     }
 }
@@ -83,14 +109,12 @@ pub fn list_containers() ->  Vec<Container> {
         "/home/daniel/.config/lxc/client.crt",
         "/home/daniel/.config/lxc/client.key"
     );
-    let mut response = server.get("/1.0/containers");
+    let mut response = server.get("/1.0/containers?recursion=1");
     let payload = response_to_value(&mut response);
-    let container_urls = payload.find("metadata").unwrap().as_array().unwrap();
+    let container_values = payload.find("metadata").unwrap().as_array().unwrap();
     let mut containers = Vec::new();
-    for container_url in container_urls {
-        let mut container_response = server.get(container_url.as_string().unwrap());
-        let container_payload = response_to_value(&mut container_response);
-        let container = Container::from_json(container_payload);
+    for container_value in container_values {
+        let container = Container::from_json(container_value);
         containers.push(container);
     }
     containers

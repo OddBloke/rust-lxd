@@ -44,7 +44,21 @@ fn format_output(headers: &Vec<String>, items: &Vec<Vec<String>>) -> String{
 
 fn main() {
     let containers = list_containers();
-    let headers = vec!["NAME".to_string(), "STATE".to_string()];
-    let container_items = containers.iter().map(|c| { vec![c.name.clone(), c.status.clone().to_uppercase()] }).collect();
+    let headers = vec!["NAME".to_string(), "STATE".to_string(), "IPV4".to_string(), "IPV6".to_string(), "EPHEMERAL".to_string(), "SNAPSHOTS".to_string()];
+    let container_items = containers.iter().map(
+        |c| {
+            let mut ipv4_address = String::new();
+            let mut ipv6_address = String::new();
+            for ip in &c.status.ips {
+                if ip.protocol == "IPV4" && ip.address != "127.0.0.1" {
+                    ipv4_address = ip.address.clone();
+                }
+                if ip.protocol == "IPV6" && ip.address != "::1" {
+                    ipv6_address = ip.address.clone();
+                }
+            }
+            let ephemeral = if c.ephemeral { "YES" } else { "NO" };
+            vec![c.name.clone(), c.status.status.clone().to_uppercase(), ipv4_address.to_string(), ipv6_address.to_string(), ephemeral.to_string(), c.snapshot_urls.len().to_string()]
+        }).collect();
     println!("{}", format_output(&headers, &container_items));
 }
