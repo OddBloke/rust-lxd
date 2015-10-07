@@ -137,10 +137,5 @@ pub fn list_containers() ->  Vec<Container> {
     let mut response = server.get("/1.0/containers?recursion=1");
     let payload = response_to_value(&mut response);
     let container_values = payload.find("metadata").unwrap().as_array().unwrap();
-    let mut containers = Vec::new();
-    for container_value in container_values {
-        let container = Container::from_json(container_value);
-        containers.push(container);
-    }
-    containers
+    container_values.iter().map(|v| { Container::from_json(v) }).collect()
 }
