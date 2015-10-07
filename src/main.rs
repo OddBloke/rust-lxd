@@ -1,7 +1,14 @@
 #[macro_use]
 extern crate clap;
+extern crate yaml_rust;
 
 extern crate lxd;
+
+use std::env;
+use std::fs::File;
+use std::io::Read;
+
+use yaml_rust::YamlLoader;
 
 use lxd::{Container,LxdServer};
 
@@ -79,10 +86,17 @@ fn prepare_container_line(c: &Container) -> Vec<String> {
 }
 
 fn list() {
+    let home_dir = env::var("HOME").unwrap();
+    let mut config_file = File::open(home_dir.clone() + "/.config/lxc/config.yml").unwrap();
+    let mut file_contents = String::new();
+    config_file.read_to_string(&mut file_contents).unwrap();
+    let lxd_config = YamlLoader::load_from_str(&file_contents).unwrap();
+    let default_remote = lxd_config[0]["default-remote"].as_str().unwrap();
+    let lxd_server = lxd_config[0]["remotes"][default_remote]["addr"].as_str().unwrap();
     let server = LxdServer::new(
-        "https://104.155.75.254:8443",
-        "/home/daniel/.config/lxc/client.crt",
-        "/home/daniel/.config/lxc/client.key"
+        lxd_server,
+        &(home_dir.clone() + "/.config/lxc/client.crt"),
+        &(home_dir.clone() + "/.config/lxc/client.key")
     );
     let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
     let container_items = server.list_containers().iter().map(prepare_container_line).collect();
