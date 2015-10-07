@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate clap;
+
 extern crate lxd;
 
 use lxd::{Container,LxdServer};
@@ -75,7 +78,7 @@ fn prepare_container_line(c: &Container) -> Vec<String> {
     vec![c.name.clone(), c.status.status.clone().to_uppercase(), ipv4_address.to_string(), ipv6_address.to_string(), ephemeral.to_string(), c.snapshot_urls.len().to_string()]
 }
 
-fn main() {
+fn list() {
     let server = LxdServer::new(
         "https://104.155.75.254:8443",
         "/home/daniel/.config/lxc/client.crt",
@@ -84,4 +87,18 @@ fn main() {
     let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
     let container_items = server.list_containers().iter().map(prepare_container_line).collect();
     print!("{}", format_output(&headers, &container_items));
+}
+
+fn main() {
+    let matches = clap_app!(
+        myapp => (
+            @subcommand list =>
+                (about: "lists containers")
+        )
+    ).get_matches();
+
+    match matches.subcommand_name() {
+        Some("list") => list(),
+        _ => println!("{}", matches.usage()),
+    }
 }
