@@ -1,6 +1,8 @@
-#![feature(convert)]
+#![feature(convert,custom_derive, plugin)]
+#![plugin(serde_macros)]
 extern crate hyper;
-extern crate rustc_serialize;
+extern crate serde;
+extern crate serde_json;
 
 use std::io::Read;
 
@@ -9,7 +11,7 @@ use hyper::client::IntoUrl;
 use hyper::client::Response;
 use hyper::net::HttpsConnector;
 use hyper::net::Openssl;
-use rustc_serialize::json::Json;
+use serde_json::Value;
 
 pub struct LxdServer {
     url: String,
@@ -58,19 +60,21 @@ pub struct Container {
 
 impl Container {
 
-    pub fn from_json(json: Json) -> Container {
-        let metadata = json.find("metadata").unwrap();
+    pub fn from_json(json: Value) -> Container {
+        let get_string_value = |path: &[&str]| {
+            json.find_path(&path).unwrap().as_string().unwrap().to_string()
+        };
         Container {
-            name: metadata.find("name").unwrap().as_string().unwrap().to_string(),
-            status: metadata.find("status").unwrap().find("status").unwrap().as_string().unwrap().to_string()
+            name: get_string_value(&["metadata", "name"]),
+            status: get_string_value(&["metadata", "status", "status"]),
         }
     }
 }
 
-fn response_to_json(response: &mut Response) -> Json {
+fn response_to_value(response: &mut Response) -> Value {
     let mut body = String::new();
     response.read_to_string(&mut body).unwrap();
-    Json::from_str(body.as_str()).unwrap()
+    serde_json::from_str(body.as_str()).unwrap()
 }
 
 pub fn list_containers() ->  Vec<Container> {
@@ -80,14 +84,14 @@ pub fn list_containers() ->  Vec<Container> {
         "/home/daniel/.config/lxc/client.key"
     );
     let mut response = server.get("/1.0/containers");
-    let payload = response_to_json(&mut response);
+    let payload = response_to_value(&mut response);
     let container_urls = payload.find("metadata").unwrap().as_array().unwrap();
     let mut containers = Vec::new();
     for container_url in container_urls {
         let mut container_response = server.get(container_url.as_string().unwrap());
-        let container_payload = response_to_json(&mut container_response);
+        let container_payload = response_to_value(&mut container_response);
         let container = Container::from_json(container_payload);
         containers.push(container);
     }
-    return containers
+    containers
 }
