@@ -3,7 +3,41 @@ extern crate lxd;
 use lxd::Container;
 use lxd::list_containers;
 
-fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String{
+fn create_dividing_line(widths: &Vec<usize>) -> String {
+    let mut dividing_line = String::new();
+    dividing_line.push_str("+");
+    for width in widths {
+        dividing_line.push_str(&format!("{:-^1$}", "", width + 2));
+        dividing_line.push_str("+");
+    }
+    dividing_line.push_str("\n");
+    dividing_line
+}
+
+fn create_header_line(headers: &Vec<&str>, widths: &Vec<usize>) -> String {
+    let mut header_line = String::new();
+    header_line.push_str("|");
+    for (n, header) in headers.iter().enumerate() {
+        header_line.push_str(&format!("{:^1$}", &header, widths[n] + 2));
+        header_line.push_str("|");
+    }
+    header_line.push_str("\n");
+    header_line
+}
+
+fn create_content_line(item: &Vec<String>, widths: &Vec<usize>) -> String {
+    let mut content_line = String::new();
+    content_line.push_str("|");
+    for (n, column_content) in item.iter().enumerate() {
+        content_line.push_str(" ");
+        content_line.push_str(&format!("{:1$}", &column_content, widths[n] + 1));
+        content_line.push_str("|");
+    }
+    content_line.push_str("\n");
+    content_line
+}
+
+fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String {
     let mut widths = Vec::new();
     for header in headers {
         widths.push(header.len());
@@ -15,29 +49,13 @@ fn format_output(headers: &Vec<&str>, items: &Vec<Vec<String>>) -> String{
             }
         }
     }
-    let mut dividing_line = "+".to_string();
-    let mut header_line = "|".to_string();
-    for (n, header) in headers.iter().enumerate() {
-        dividing_line.push_str(&vec!["-"; widths[n] + 2].concat());
-        dividing_line.push_str("+");
-        header_line.push_str(&format!("{:^1$}", &header, widths[n] + 2));
-        header_line.push_str("|");
-    }
+    let dividing_line = create_dividing_line(&widths);
     let mut output_string = String::new();
     output_string.push_str(&dividing_line);
-    output_string.push_str("\n");
-    output_string.push_str(&header_line);
-    output_string.push_str("\n");
+    output_string.push_str(&create_header_line(headers, &widths));
     output_string.push_str(&dividing_line);
-    output_string.push_str("\n");
     for item in items {
-        output_string.push_str("|");
-        for (n, column_content) in item.iter().enumerate() {
-            output_string.push_str(" ");
-            output_string.push_str(&format!("{:1$}", &column_content, widths[n] + 1));
-            output_string.push_str("|");
-        }
-        output_string.push_str("\n");
+        output_string.push_str(&create_content_line(item, &widths));
     }
     output_string.push_str(&dividing_line);
     output_string
@@ -61,5 +79,5 @@ fn prepare_container_line(c: &Container) -> Vec<String> {
 fn main() {
     let headers = vec!["NAME", "STATE", "IPV4", "IPV6", "EPHEMERAL", "SNAPSHOTS"];
     let container_items = list_containers().iter().map(prepare_container_line).collect();
-    println!("{}", format_output(&headers, &container_items));
+    print!("{}", format_output(&headers, &container_items));
 }
