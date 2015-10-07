@@ -74,8 +74,6 @@ pub struct Container {
     pub status: ContainerStatus,
     pub ephemeral: bool,
     pub snapshot_urls: Vec<String>,
-//    pub ipv4: String,
-//    pub ipv6: String,
 }
 
 impl Container {
