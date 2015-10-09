@@ -11,6 +11,7 @@ use hyper::client::IntoUrl;
 use hyper::client::Response;
 use hyper::net::HttpsConnector;
 use hyper::net::Openssl;
+use hyper::status::StatusCode;
 use serde_json::Value;
 
 pub struct LxdServer {
@@ -42,9 +43,13 @@ impl LxdServer {
             Ok(url) => url,
         };
         let unsent_response = client.get(url);
-        match unsent_response.send() {
+        let response = match unsent_response.send() {
             Err(why) => panic!("{:?}", why),
             Ok(response) => response,
+        };
+        match response.status {
+            StatusCode::Ok => response,
+            _ => panic!("Response not OK: {}", response.status)
         }
     }
 
