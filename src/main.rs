@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate clap;
 extern crate yaml_rust;
 
@@ -8,6 +7,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 
+use clap::{App, Arg, ArgMatches, SubCommand};
 use yaml_rust::YamlLoader;
 
 use lxd::{Container,LxdServer};
@@ -85,14 +85,18 @@ fn prepare_container_line(c: &Container) -> Vec<String> {
     vec![c.name.clone(), c.status.status.clone().to_uppercase(), ipv4_address.to_string(), ipv6_address.to_string(), ephemeral.to_string(), c.snapshot_urls.len().to_string()]
 }
 
-fn list() {
+fn list(matches: &ArgMatches) {
     let home_dir = env::var("HOME").unwrap();
     let mut config_file = File::open(home_dir.clone() + "/.config/lxc/config.yml").unwrap();
     let mut file_contents = String::new();
     config_file.read_to_string(&mut file_contents).unwrap();
     let lxd_config = YamlLoader::load_from_str(&file_contents).unwrap();
     let default_remote = lxd_config[0]["default-remote"].as_str().unwrap();
-    let lxd_server = lxd_config[0]["remotes"][default_remote]["addr"].as_str().unwrap();
+    let remote = matches.value_of("resource").unwrap_or(default_remote);
+    let lxd_server = match lxd_config[0]["remotes"][remote]["addr"].as_str() {
+        Some(remote_addr) => remote_addr,
+        None => panic!("No remote named {} configured", remote)
+    };
     let server = LxdServer::new(
         lxd_server,
         &(home_dir.clone() + "/.config/lxc/client.crt"),
@@ -104,15 +108,16 @@ fn list() {
 }
 
 fn main() {
-    let matches = clap_app!(
-        myapp => (
-            @subcommand list =>
-                (about: "lists containers")
-        )
-    ).get_matches();
+    let matches = App::new("lxd")
+        .subcommand(SubCommand::with_name("list")
+                    .arg(Arg::with_name("resource")
+                         .help("the resource to use")
+                         .required(true)
+                         .index(1)))
+        .get_matches();
 
     match matches.subcommand_name() {
-        Some("list") => list(),
+        Some("list") => list(matches.subcommand_matches("list").unwrap()),
         _ => println!("{}", matches.usage()),
     }
 }
